@@ -1,5 +1,5 @@
 # Padding-adversarial-training (P-AT)
-Here is the code(initial version) of paper "Padding Adversarial Training: Enhancing Robustness with Adversarial Space Hypothesis" (Under Review), which is a new adversarial defense method for improving DNNs' adversarial robustness.
+Here is the code (initial version) of paper "Padding Adversarial Training: Enhancing Robustness with Adversarial Space Hypothesis" (Under Review), which is a new adversarial defense method for improving DNNs' adversarial robustness.
 
 We have verified P-AT with various models and datasets, here is the code of experiments in MNIST and CIFAR-10.
 
