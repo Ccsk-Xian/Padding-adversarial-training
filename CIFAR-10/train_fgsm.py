@@ -15,10 +15,11 @@ from apex import amp
 from advertorch.defenses import MedianSmoothing2D
 from advertorch.defenses import BitSqueezing
 from advertorch.defenses import JPEGFilter
-
+# from GoogleNet import GoogLeNet
+from mobilevit import mobile_vit_small
 from preact_resnet import PreActResNet18
-from utils_cifar import (upper_limit, lower_limit, std, clamp, get_loaders,
-                   attack_pgd, evaluate_pgd_change, evaluate_standard_change, evaluate_pgd, evaluate_standard,makeRandom,LabelSmoothingLoss)
+from utils_cifar_out import (upper_limit, lower_limit, std, clamp, get_loaders,
+                             attack_pgd, evaluate_pgd_change, evaluate_standard_change, evaluate_pgd, evaluate_standard, makeRandom, LabelSmoothingLoss)
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,10 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch-size', default=128, type=int)
     parser.add_argument('--data-dir', default='../cifar10_data', type=str)
-    parser.add_argument('--epochs', default=20, type=int)
+    parser.add_argument('--epochs', default=40, type=int)
     parser.add_argument('--lr-schedule', default='cyclic', choices=['cyclic', 'multistep'])
     parser.add_argument('--lr-min', default=0., type=float)
-    parser.add_argument('--lr-max', default=0.2, type=float)
+    parser.add_argument('--lr-max', default=0.1, type=float)
     parser.add_argument('--weight-decay', default=5e-4, type=float)
     parser.add_argument('--momentum', default=0.9, type=float)
     parser.add_argument('--epsilon', default=8, type=int)
@@ -39,7 +40,7 @@ def get_args():
     parser.add_argument('--channel', default=3, type=int)
     parser.add_argument('--mean', default=[0.4914, 0.4822, 0.4465], type=float)
     parser.add_argument('--std', default=[0.2471, 0.2435, 0.2616], type=float)
-    parser.add_argument('--alpha', default=10, type=float, help='Step size')
+    parser.add_argument('--alpha', default=2, type=float, help='Step size')
     parser.add_argument('--delta-init', default='random', choices=['zero', 'random', 'previous'],
         help='Perturbation initialization method')
     parser.add_argument('--out-dir', default='train_fgsm_output', type=str, help='Output directory')
@@ -72,7 +73,7 @@ def main():
     if not os.path.exists(args.out_dir):
         os.mkdir(args.out_dir)
     #日志文件路径
-    logfile = os.path.join(args.out_dir, 'output27.log')
+    logfile = os.path.join(args.out_dir, 'output49.log')
     if os.path.exists(logfile):
         os.remove(logfile)
 
@@ -81,7 +82,7 @@ def main():
         format='[%(asctime)s] - %(message)s',
         datefmt='%Y/%m/%d %H:%M:%S',
         level=logging.INFO,
-        filename=os.path.join(args.out_dir, 'output27.log'))
+        filename=os.path.join(args.out_dir, 'output49.log'))
     logger.info(args)
 
     #设置随机因子
@@ -99,8 +100,10 @@ def main():
 
     #引入模型
     # model = PreActResNet18().cuda()
-    model = torchvision.models.resnet18(num_classes=11).cuda()
-    #训练模型
+    # model = torchvision.models.resnet18(num_classes=11).cuda()
+    # model = torchvision.models.vgg16(num_classes=10).cuda()
+    model = mobile_vit_small(num_classes=11).cuda()
+    # 训练模型
     model.train()
 
     # 设置SGD优化器，权重衰减：正则化，优化更小的权重，降低网络复杂度，增加数据拟合(奥卡姆剃刀)--过拟合要求高系数引发高梯度。
@@ -114,6 +117,7 @@ def main():
         print(args.early_stop,'**')
     model, opt = amp.initialize(model, opt, **amp_args)
     criterion = nn.CrossEntropyLoss()
+    # loss_func= nn.CrossEntropyLoss()
     loss_func = LabelSmoothingLoss(classes_target=10, classes=11, smoothing=0.35)
 
     if args.delta_init == 'previous':
@@ -166,17 +170,19 @@ def main():
             # output = model(X + delta[:X.size(0)])
             X = X + delta[:X.size(0)]
             # padding装配
-            # data_padding = makeRandom(channel=args.channel, data=X, max=args.max, min=args.min, mean=args.mean,
-            #                           std=args.std, Epoch=args.epochs, epoch=epoch)
-            # data_padding = data_padding.cuda()
-            # y_padding = torch.ones_like(y) * 10
-            # y_padding = y_padding.cuda()
-            # X = torch.cat((X, data_padding[:10,:,:,:]), 0)
-            # y = torch.cat((y, y_padding[:10]), 0)
-            # X, y = X.cuda(), y.cuda()
+            data_padding = makeRandom(channel=args.channel, data=X, max=args.max, min=args.min, mean=args.mean,
+                                      std=args.std, Epoch=args.epochs, epoch=epoch)
+            data_padding = data_padding.cuda()
+            y_padding = torch.ones_like(y) * 10
+            y_padding = y_padding.cuda()
+            X = torch.cat((X, data_padding[:10,:,:,:]), 0)
+            y = torch.cat((y, y_padding[:10]), 0)
+            X, y = X.cuda(), y.cuda()
 
             output = model(X)
-
+            # pr = F.softmax(output[:10])
+            # print(y[:10])
+            # print(pr)
             # loss = criterion(output, y)
             loss = loss_func(output,y)
             opt.zero_grad()
@@ -221,12 +227,12 @@ def main():
         logger.info('%d \t %.1f \t \t %.4f \t %.4f \t %.4f',
                     epoch, epoch_time - start_epoch_time, lr, train_loss / train_n, train_acc / train_n)
 
-        test_output = model(X[:10])
+        test_output = model(X[:20])
         pred_y = torch.max(test_output, 1)[1].data.cpu().numpy()
         print(pred_y, 'prediction number')
         print(y[:10].cpu().numpy(), 'real number')
 
-        test_output = model(X[-10:])
+        test_output = model(X[-20:])
         pred_y = torch.max(test_output, 1)[1].data.cpu().numpy()
         print(pred_y, 'prediction number')
         print(y[-10:].cpu().numpy(), 'real number')
@@ -236,12 +242,15 @@ def main():
     train_time = time.time()
     if not args.early_stop:
         best_state_dict = model.state_dict()
-    torch.save(best_state_dict, os.path.join(args.out_dir, 'model_10.pth'))
+    # torch.save(best_state_dict, os.path.join(args.out_dir, 'resnet18_fgsm_lc.pth'))
+    torch.save(best_state_dict, os.path.join(args.out_dir, 'mobile_vit_small_trapll20_fgsm.pth'))
     logger.info('Total train time: %.4f minutes', (train_time - start_train_time)/60)
 
     # Evaluation 模型评估。
     # model_test = torch().cuda()
-    model_test = torchvision.models.resnet18(num_classes=11).cuda()
+    # model_test = torchvision.models.resnet18(num_classes=11).cuda()
+    # model_test = torchvision.models.vgg16(num_classes=10).cuda()
+    model_test = mobile_vit_small(num_classes=11).cuda()
     model_test.load_state_dict(best_state_dict)
     model_test.float()
     model_test.eval()
