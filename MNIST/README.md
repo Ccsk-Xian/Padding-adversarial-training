@@ -10,7 +10,8 @@ In the content of train_mnist.py, LabelSmoothingLoss is the trap smoothing loss 
 You can change the code of ```P_X = X[:10, :, :, :]``` to control the percentage of padding data in each epoch.
 
 After AT, you can use eval_mnist.py to test the performance of your models.
-We provide the weights (.pth) file of toyNet and RestNet-18 in the file of save, you can check out the performance of P-AT in Mnist dataset.
+We provide the weights (.pth) file of toyNet, you can check out the performance of P-AT in Mnist dataset.
 Concretely, 1.pth and 4.pth are the weights of Standard-AT(FGSM) and P-AT(Fgsm) with toyNet<br>
-4.pth and 8.pth are the weights of Standard-AT(FGSM) P-AT(FGSM) with ResNet-18
+
+As the weight files are larger than 25MB, if you are interesting in relative weight files of ResNet or the weight with CIFAR and MINI-ImageNet, please contact us. 
 
