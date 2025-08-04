@@ -8,8 +8,7 @@ You can find out the training process and specific algorithm (loss function, pad
 The specific parameter selection could be comprehended through our paper and the annotation in the training process python file.
 
 If you have the requirements about specific model's pth file, please connect us at: ccsk1wsl@stu.xupt.edu.cn.
-Weights of models on CIFAR-10 and Mini-ImageNet are available at [here](https://pan.baidu.com/s/1g4tZ40uXcSRL0bI3FUCUYQ?pwd=8bxx)
-Try an instance in MNIST, we have provided the weight of toyNet of P-AT (FGSM)
 
+Weights of models on CIFAR-10 and Mini-ImageNet are available at [here](https://pan.baidu.com/s/1g4tZ40uXcSRL0bI3FUCUYQ?pwd=8bxx).
 
-
+Weights of models on MNIST are available at MNIST/save.
